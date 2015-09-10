@@ -1,0 +1,17 @@
+{
+  "name": "p3-ws-ftpd",
+  "version": "0.0.1",
+  "description": "FTPD layer over PATRIC Workspace",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ftpd": "^0.2.11",
+    "nconf": "^0.7.2",
+    "promised-io": "^0.3.5",
+    "request": "^2.61.0"
+  }
+}
