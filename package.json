@@ -9,9 +9,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "form-data": "^1.0.0-rc3",
     "ftpd": "^0.2.11",
     "nconf": "^0.7.2",
     "promised-io": "^0.3.5",
-    "request": "^2.61.0"
+    "request": "^2.61.0",
+    "request-debug": "^0.2.0"
   }
 }

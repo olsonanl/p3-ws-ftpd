@@ -11,14 +11,13 @@ var UIDMap = {byOwner:{},uid: {}}
  
 var options = {
 	listenPort: conf.get('ftpd_port') || 21,
-	pasvPortRangeStart: conf.get('pasvPortRangeStart') || 4000,
-	pasvPortRangeEnd: conf.get('pasvPortRangeEnd') || 5000,
+/*	pasvPortRangeStart: conf.get('pasvPortRangeStart') || 4000,
+	pasvPortRangeEnd: conf.get('pasvPortRangeEnd') || 5000,*/
+	useWriteFile: false,
+	useReadFile: false,
+	logLevel: 100,
 	getInitialCwd: function(connection, callback) {
-		//var userPath ='/' + connection.username + "@patricbrc.org/home";
 		var userPath = "/" + connection.username + "@patricbrc.org";
-//		fs.exists(userPath, function(exists) {
-//			exists ? callback(null, userPath) : callback('path does not exist', userPath);
-//		});
 		callback(null,userPath);
 	},
 	getRoot: function(user) {
@@ -26,12 +25,16 @@ var options = {
 	},
 
 	getUsernameFromUid: function(uid,callback) {
-		console.log("getUsernameFromUid: ", uid, UIDMap);
+//		console.log("getUsernameFromUid: ", uid, UIDMap);
 		var name = UIDMap.uid[uid];
 		if (!name) { name = "nobody"; }
 //		name = name.replace("@patricbrc.org","");
-		console.log("    Returning: ",name);
+//		console.log("    Returning: ",name);
 		callback(null,name);
+	},
+
+	getGroupFromGid: function(gid,c){
+		c(null, "nogroup");
 	}
 	
 };
@@ -41,11 +44,6 @@ var host = conf.get('host') ||  '127.0.0.1';
  
 var server = new ftpd.FtpServer(host, options);
 
-server.readdir = function(path){
-	console.log("READDIR : ", path);
-}
-
-console.log("server: ", server); 
 server.on('client:connected', function(conn) {
 	var username;
 	console.log('Client connected from ' + conn.socket.remoteAddress);
@@ -60,11 +58,6 @@ server.on('client:connected', function(conn) {
 			failure();
 		})
 	});
-	conn.on('command:list', function(path, success, failure) {
-		console.log("list: ", path);	
-		success();
-	});
-	
 	
 });
  
