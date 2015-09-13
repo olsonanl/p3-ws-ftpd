@@ -359,7 +359,7 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			var filename;
 			var chunkIndex=1
 			var sendBuffer;
-			var minChunkSize=1000000;
+			var minChunkSize=250000;
 
 			ws._write = function(chunk,encoding,callback){
 				var _self=this;	
@@ -391,17 +391,18 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 				});
 			}
 
-			var finishUpload = function(uploadURL) {
+			var finishUpload = function(uploadURL,evt) {
 				var form = {parts: "close"}
 				var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
 					if (err) { console.log("Upload Err: ", err); return; }
 					console.log("All Chunks Uploaded.  Total Chunks for path: ", path, " : ", chunkIndex);
+					ws.emit("close",evt);
 
 				})
 
 			}
 
-			ws.on("finish", function(){
+			ws.on("finish", function(evt){
 				console.log("WriteStream.ended: ", ws._writableState.ended, " WriteStream.finished: ", ws._writableState.finished);
 				when(initDef, function(){
 					if (sendBuffer && sendBuffer.length>0) {
@@ -412,10 +413,10 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 						var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
 							if (err) { console.log("Upload Err: ", err);  return; }
 							console.log("Chunk Uploaded: ", body);
-							finishUpload(uploadURL);	
+							finishUpload(uploadURL,evt);	
 						})
 					}else{
-						finishUpload(uploadURL);
+						finishUpload(uploadURL,evt);
 					}
 				});
 
