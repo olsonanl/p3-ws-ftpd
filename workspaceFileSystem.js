@@ -395,7 +395,6 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			}	
 			console.log("createWriteStream()", path, options);
 			var parsed = Path.parse(path);
-			console.log("Write to: ", path);	
 			WriteStream.prototype.destroySoon = PassThrough.prototype.end;
 
 			var ws = new WriteStream();
@@ -403,12 +402,12 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			var filename;
 			var chunkIndex=1
 			var sendBuffer;
-			var minChunkSize=250000;
+			var minChunkSize=500000;
 			var hasOneWrite=false;
 			var allChunks = [];
 
 			ws._write = function(chunk,encoding,callback){
-				console.log("_write() -  initDef: ", initDef, " writableState: ", ws._writableState);
+				//console.log("_write() -  initDef: ", initDef, " writableState: ", ws._writableState);
 				var _self=this;	
 
 	
@@ -418,36 +417,29 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 					sendBuffer = Buffer.concat([sendBuffer,chunk],sendBuffer.length + chunk.length);
 				}
 
-				/*
-				if (!ws._writableState.finished) {
-				 	if (sendBuffer && (sendBuffer.length < minChunkSize)){
-						console.log("Appended chunk to sendBuffer");
-						when(initDef, function(initDef) {
-							callback();
-							chunkDefer.resolve(true);
-						});
-						return;
-					}
-				}else {
-					consol.log("Writeable already finished, send what we have");
+			 	if (sendBuffer && (sendBuffer.length < minChunkSize)){
+					//console.log("Appended chunk to sendBuffer");
+					when(initDef, function(initDef) {
+						callback();
+					});
+					return;
 				}
-				*/
 
 				var data = sendBuffer;
 				sendBuffer=null;
 	
 				when(initDef, function(initDef){
-					console.log("_write() after initDef: ", initDef, " writableState: ", ws._writableState);
-					console.log("WriteStream():  PUSH Chunk from WriteStream to ReadStream");
-					console.log("uploadURL: ", uploadURL);
+					//console.log("_write() after initDef: ", initDef, " writableState: ", ws._writableState);
+					//console.log("WriteStream():  PUSH Chunk from WriteStream to ReadStream");
+					//console.log("uploadURL: ", uploadURL);
 					console.log("filename: ", filename, " Chunk: ", chunkIndex, "Chunk Size: ", data.length);
 	
 					var form = {}
 					form[chunkIndex++]={value: data, options: {filename: filename, contentType: "application/octet-stream"}, "content-length":data.length}
 					var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
 						if (err) { console.log("Upload Err: ", err); callback(err); return; }
-						console.log("Chunk Uploaded: ", body);
-						console.log("writableState after chunk: ", ws._writableState);
+					//	console.log("Chunk Uploaded: ", body);
+					//	console.log("writableState after chunk: ", ws._writableState);
 						callback();
 					})
 				});
@@ -467,11 +459,22 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			}
 
 			ws.on("finish", function(evt){
-				console.log("WriteStream.ended: ", ws._writableState.ended, " WriteStream.finished: ", ws._writableState.finished);
-				console.log("allChunks len: ", allChunks.length);
+//				console.log("WriteStream.ended: ", ws._writableState.ended, " WriteStream.finished: ", ws._writableState.finished);
+//				console.log("allChunks len: ", allChunks.length);
 				when(initDef, function(initDef){
-					console.log("Empty Send Buffer. Num Chunks:", chunkIndex-1);
-					finishUpload(uploadURL,chunkIndex-1,evt);
+					if (sendBuffer && sendBuffer.length>0) {
+						var data = sendBuffer;
+						sendBuffer=null;
+						var form = {}
+						form[chunkIndex]={value: data, options: {filename: filename, contentType: "application/octet-stream"}, "content-length":data.length}
+						var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
+							if (err) { console.log("Upload Err: ", err); callback(err); return; }
+							finishUpload(uploadURL, chunkIndex,evt);
+						})
+
+					}else {
+						finishUpload(uploadURL,chunkIndex-1,evt);
+					}
 				});
 
 			});
