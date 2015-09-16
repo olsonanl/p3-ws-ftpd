@@ -468,7 +468,7 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 						var form = {}
 						form[chunkIndex]={value: data, options: {filename: filename, contentType: "application/octet-stream"}, "content-length":data.length}
 						var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
-							if (err) { console.log("Upload Err: ", err); callback(err); return; }
+							if (err) { console.log("Upload Err: ", err); return; }
 							finishUpload(uploadURL, chunkIndex,evt);
 						})
 
