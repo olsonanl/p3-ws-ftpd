@@ -2,7 +2,8 @@ var map = {
 	".fa": "reads",
 	".fasta": "reads",
 	".fq": "reads",
-	".fastq": "read"
+	".fastq": "read",
+	".fasta.gz": "reads"
 }
 
 module.exports = function(extension){
