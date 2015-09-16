@@ -1,6 +1,7 @@
 var request = require('request');
 var defer = require("promised-io/promise").defer;
 var when = require("promised-io/promise").when;
+var All = require("promised-io/promise").all;
 var WSReadStream= require('./wsReadStream');
 var WriteStream = require("stream").Writable;
 var ReadStream = require("stream").Readable;
@@ -122,7 +123,7 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 	}
 
 	var fs = {
-		_token: token,
+		token: token,
 		username: username,
 		rootFolders: null,
 		readdir: function(path, callback) {
@@ -161,7 +162,7 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 						global_permission: r[10]
 					}	
 
-					console.log("Found: ",path, " type: ", d.type);
+					console.log("Found: ",d.path, " type: ", d.type);
 					statCache[d.path] = d;
 
 					var name = d.name;
@@ -174,6 +175,11 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 						UIDMap.uid[UIDidx] = d.owner_id;
 						UIDidx+=1;
 					}
+
+					var pathParts = d.path.split("/");
+					pathParts.shift();
+					console.log("pathParts: ", pathParts);
+
 					if (path == "/"){
 						var name = r[2].split("/")[1];
 						var rootWS = {}
@@ -184,6 +190,27 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 						rootWS.path = "/" + name;	
 						statCache["/" + name]=rootWS;
 					}
+					var b="/";
+
+					pathParts.forEach(function(p,idx){
+						b= b + p;
+						if (idx < pathParts.length-1){
+							b=b+"/";
+						}	 
+						console.log("Checking StatCache for: ", b);
+						if (!statCache[b]){
+							var subdirWS = {}
+							for (var prop in d) {
+								subdirWS[prop] = d[prop]
+							}
+							subdirWS.name = p;
+							subdirWS.path = b;
+							console.log("set statcache for ", b, " to ", subdirWS);
+							statCache[b] = subdirWS;
+						}else{
+							console.log("Found: ", statCache[b]);
+						}
+					});
 
 					return name;
 				});
@@ -312,19 +339,37 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 
 		stat: function(path, callback){
 			//console.log("STAT: ", path);
+			var parts = path.split("/").filter(function(a) { return !!a; }); 
+	
 			var obj = statCache[path];
-			if (path == "/"){
-				callback(null, fs.buildStatObj({
-					uid: 1,
-				 	type: "folder",
-					path: "/",
-					name: "WORKSPACES",
-					creation_time: new Date(0).toISOString()
-				}));
-				return;
-			}
 
-			if (!obj) {
+			
+			
+			if (!obj) {	
+				//console.log("parts: ", parts, parts.length);
+				if (parts.length<1) {
+					callback(null,fs.buildStatObj({
+						uid: 1,
+					 	type: "folder",
+						path: "/",
+						name: "WORKSPACES",
+						creation_time: new Date(0).toISOString()
+					}));
+					return;
+				}else if (parts.length==1) {
+					statCache[path] = fs.buildStatObj({
+						uid: UIDMap.byOwner[parts[0]],
+						type: "folder",
+						path: "/" + parts[0],
+						name: parts[0],
+						creation_time: new Date(0).toISOString()
+					});
+					callback(null,statCache[path]);	
+					return;
+	
+				}				
+				//console.log("STAT FOUND OBJ: ", obj);
+
 				when(wsGet(path,true), function(obj){
 					//console.log(" STAT META: ", obj);
 					callback(null, fs.buildStatObj(obj))
@@ -354,28 +399,45 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			WriteStream.prototype.destroySoon = PassThrough.prototype.end;
 
 			var ws = new WriteStream();
-
 			var uploadURL;
 			var filename;
 			var chunkIndex=1
 			var sendBuffer;
 			var minChunkSize=250000;
+			var hasOneWrite=false;
+			var allChunks = [];
 
 			ws._write = function(chunk,encoding,callback){
+				console.log("_write() -  initDef: ", initDef, " writableState: ", ws._writableState);
 				var _self=this;	
+
+	
 				if (!sendBuffer){
 					sendBuffer=chunk;
 				}else{
 					sendBuffer = Buffer.concat([sendBuffer,chunk],sendBuffer.length + chunk.length);
 				}
-			 	if (sendBuffer && (sendBuffer.length < minChunkSize)){
-					callback();
-					return;
+
+				/*
+				if (!ws._writableState.finished) {
+				 	if (sendBuffer && (sendBuffer.length < minChunkSize)){
+						console.log("Appended chunk to sendBuffer");
+						when(initDef, function(initDef) {
+							callback();
+							chunkDefer.resolve(true);
+						});
+						return;
+					}
+				}else {
+					consol.log("Writeable already finished, send what we have");
 				}
+				*/
+
 				var data = sendBuffer;
 				sendBuffer=null;
 	
-				when(initDef, function(){
+				when(initDef, function(initDef){
+					console.log("_write() after initDef: ", initDef, " writableState: ", ws._writableState);
 					console.log("WriteStream():  PUSH Chunk from WriteStream to ReadStream");
 					console.log("uploadURL: ", uploadURL);
 					console.log("filename: ", filename, " Chunk: ", chunkIndex, "Chunk Size: ", data.length);
@@ -385,39 +447,31 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 					var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
 						if (err) { console.log("Upload Err: ", err); callback(err); return; }
 						console.log("Chunk Uploaded: ", body);
+						console.log("writableState after chunk: ", ws._writableState);
 						callback();
-						console.log("WriteStream.ended: ", _self._writableState.ended, " WriteStream.finished: ", _self._writableState.finished);
 					})
 				});
 			}
 
-			var finishUpload = function(uploadURL,evt) {
+			var finishUpload = function(uploadURL,chunkCount, evt) {
+				var def = new defer();
 				var form = {parts: "close"}
 				var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
-					if (err) { console.log("Upload Err: ", err); return; }
-					console.log("All Chunks Uploaded.  Total Chunks for path: ", path, " : ", chunkIndex);
+					if (err) { console.log("Upload Err: ", err); def.reject(err); return; }
+					console.log("All Chunks Uploaded.  Total Chunks for path: ", path, " : ", chunkCount);
+					def.resolve(true);
 					ws.emit("close",evt);
 
 				})
-
+				return def.promise;
 			}
 
 			ws.on("finish", function(evt){
 				console.log("WriteStream.ended: ", ws._writableState.ended, " WriteStream.finished: ", ws._writableState.finished);
-				when(initDef, function(){
-					if (sendBuffer && sendBuffer.length>0) {
-						console.log("Drain final sendBuffer");
-						var form = {}
-						form[chunkIndex++]={value: sendBuffer, options: {filename: filename, contentType: "application/octet-stream"}, "content-length":sendBuffer.length}
-						sendBuffer=null;
-						var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
-							if (err) { console.log("Upload Err: ", err);  return; }
-							console.log("Chunk Uploaded: ", body);
-							finishUpload(uploadURL,evt);	
-						})
-					}else{
-						finishUpload(uploadURL,evt);
-					}
+				console.log("allChunks len: ", allChunks.length);
+				when(initDef, function(initDef){
+					console.log("Empty Send Buffer. Num Chunks:", chunkIndex-1);
+					finishUpload(uploadURL,chunkIndex-1,evt);
 				});
 
 			});
@@ -429,14 +483,18 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			}
 
 			var initDef = when(wsCreate(obj,true), function(results){
+				var def = new defer();
 				console.log("wsCreate: ", results);
 				uploadURL = results.link_reference;
 				filename = results.name;
 				var form = { parts: "unknown" }
 				var upr = request({method: "PUT",formData: form, url: uploadURL, preambleCRLF: true, postambleCRLF: true, headers:  {"Authorization": "OAuth " +token, "content-type": "multipart/form-data" }}, function(err,response,body){
-					if (err) { console.log("Upload Err: ", err); return; }
+					if (err) { console.log("Upload Err: ", err); def.reject(err); return; }
 					console.log("set parts to unknown ", body);
+					def.resolve(true);
+					ws.emit("open");
 				});
+				return def.promise;
 
 			}, function(err){
 				console.log("Error Creating File: ", err);
@@ -450,19 +508,23 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			options.rpc = rpc;
 			fs.wsGet = wsGet;
 			options.fs = fs;
-
-			var stat = statCache[path];
-
+		
+//			var stat = statCache[path];
+			
+/*
 			if (!stat) {
+				console.log("statCache: ", JSON.stringify(statCache,null,4));
 				throw Error("Expected statCache to contain " + path);
 			}
 
 			if (stat.link_reference){
 				return request({url: stat.link_reference + "?download", headers: {"Authorization": "OAuth " +token }});
 			}else{
+
+*/
 				return new WSReadStream(path, options);
 
-			}
+//			}
 	
 		},
 

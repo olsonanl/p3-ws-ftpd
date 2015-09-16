@@ -41,6 +41,7 @@ var options = {
 
  
 var host = conf.get('host') ||  '127.0.0.1';
+console.log("FTPD Host: ", host);
  
 var server = new ftpd.FtpServer(host, options);
 
