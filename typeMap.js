@@ -2,7 +2,7 @@ var map = {
 	".fa": "reads",
 	".fasta": "reads",
 	".fq": "reads",
-	".fastq": "read",
+	".fastq": "reads",
 	".fasta.gz": "reads"
 }
 
