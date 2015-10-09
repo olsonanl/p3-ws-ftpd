@@ -6,7 +6,7 @@ var map = {
 	".fastq": "reads",
 	".fasta.gz": "reads",
     ".fq.gz": "reads",
-    ".faa": "feature_protein_fasta",
+    ".faa": "feature_protein_fasta"
 }
 
 module.exports = function(extension){
