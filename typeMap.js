@@ -1,9 +1,12 @@
 var map = {
-	".fa": "reads",
-	".fasta": "reads",
+	".fa": "contigs",
+	".fasta": "contigs",
+    ".fna": "contigs",
 	".fq": "reads",
 	".fastq": "reads",
-	".fasta.gz": "reads"
+	".fasta.gz": "reads",
+    ".fq.gz": "reads",
+    ".faa": "feature_protein_fasta",
 }
 
 module.exports = function(extension){
