@@ -11,11 +11,11 @@ var UIDMap = {byOwner:{},uid: {}}
  
 var options = {
 	listenPort: conf.get('ftpd_port') || 21,
-/*	pasvPortRangeStart: conf.get('pasvPortRangeStart') || 4000,
-	pasvPortRangeEnd: conf.get('pasvPortRangeEnd') || 5000,*/
+	pasvPortRangeStart: conf.get('pasvPortRangeStart') || 4000,
+	pasvPortRangeEnd: conf.get('pasvPortRangeEnd') || 5000,
 	useWriteFile: false,
 	useReadFile: false,
-	logLevel: 100,
+//	logLevel: 100,
 	getInitialCwd: function(connection, callback) {
 		var userPath = "/" + connection.username + "@patricbrc.org";
 		callback(null,userPath);
@@ -25,11 +25,8 @@ var options = {
 	},
 
 	getUsernameFromUid: function(uid,callback) {
-//		console.log("getUsernameFromUid: ", uid, UIDMap);
 		var name = UIDMap.uid[uid];
 		if (!name) { name = "nobody"; }
-//		name = name.replace("@patricbrc.org","");
-//		console.log("    Returning: ",name);
 		callback(null,name);
 	},
 

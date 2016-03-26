@@ -7,7 +7,7 @@ var WriteStream = require("stream").Writable;
 var ReadStream = require("stream").Readable;
 var PassThrough = require("stream").PassThrough;
 var Path = require("path");
-var typeFromExtension = require("./typeMap");
+var typeFromFilename= require("./typeMap");
 var FormData = require('form-data');
 
 
@@ -482,7 +482,7 @@ module.exports = function(workspaceURL, username, token, UIDMap) {
 			var obj ={	
 				path: parsed.dir,
 				name: parsed.base,
-				type: typeFromExtension(parsed.ext)
+				type: typeFromFilename(parsed.base)
 			}
 
 			var initDef = when(wsCreate(obj,true), function(results){
