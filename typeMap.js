@@ -3,7 +3,7 @@ var map = {
 	"fasta": "reads",
 	"fq": "reads",
 	"fastq": "reads",
-	"tgz": "tar_gz"
+	"tgz": "tar_gz",
     	".fna": "contigs",
 	".fq": "reads",
 	".fastq": "reads",

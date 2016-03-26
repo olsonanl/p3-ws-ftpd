@@ -8,6 +8,18 @@ var authURL = conf.get("authorizationURL");
 
 
 var UIDMap = {byOwner:{},uid: {}}
+
+var tlsOptions={
+	rejectUnauthorized: false
+};
+
+if (conf.get("sslCertificateKeyFile")){
+	tlsOptions.key=fs.readFileSync(conf.get("sslCertificateKeyFile")).toString();
+}
+
+if (conf.get("sslCertificateFile")){
+	tlsOptions.cert=fs.readFileSync(conf.get("sslCertificateFile")).toString();
+}
  
 var options = {
 	listenPort: conf.get('ftpd_port') || 21,
@@ -15,7 +27,9 @@ var options = {
 	pasvPortRangeEnd: conf.get('pasvPortRangeEnd') || 5000,
 	useWriteFile: false,
 	useReadFile: false,
-//	logLevel: 100,
+	tlsOnly: conf.get("tlsOnly")||false,
+	tlsOptions: tlsOptions,
+	logLevel: conf.get("logLevel")||0,
 	getInitialCwd: function(connection, callback) {
 		var userPath = "/" + connection.username + "@patricbrc.org";
 		callback(null,userPath);
