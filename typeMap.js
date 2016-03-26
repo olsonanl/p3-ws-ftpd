@@ -4,6 +4,10 @@ var map = {
 	"fq": "reads",
 	"fastq": "reads",
 	"tgz": "tar_gz"
+    	".fna": "contigs",
+	".fq": "reads",
+	".fastq": "reads",
+    	".faa": "feature_protein_fasta"
 }
 
 var WorkspaceTypes = [
