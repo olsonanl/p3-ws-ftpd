@@ -20,6 +20,9 @@ if (conf.get("sslCertificateKeyFile")){
 if (conf.get("sslCertificateFile")){
 	tlsOptions.cert=fs.readFileSync(conf.get("sslCertificateFile")).toString();
 }
+if (conf.get("sslCaFile")){
+	tlsOptions.ca=fs.readFileSync(conf.get("sslCaFile")).toString();
+}
  
 var options = {
 	listenPort: conf.get('ftpd_port') || 21,
